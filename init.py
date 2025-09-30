@@ -10,7 +10,10 @@ import subprocess
 def find_kinemaster_template_videos(url):
     def worker():
         TARGET_URL = url
-        SOURCE_DOMAIN = "https://cdn-project-feed.kinemasters.com/"
+        SOURCE_DOMAINS = [
+            "https://cdn-project-feed.kinemasters.com/",
+            "https://mix.kinemix.com/"
+        ]
         DOWNLOAD_DIR = "cache"
 
         status.config(text="Status: Searching for videos...")
@@ -58,11 +61,21 @@ def find_kinemaster_template_videos(url):
             os.makedirs(DOWNLOAD_DIR)
             print(f"Created download directory: {DOWNLOAD_DIR}")
 
-        print(f"\nSearching for videos starting with '{SOURCE_DOMAIN}' on {TARGET_URL}...")
-        video_links = find_video_sources(TARGET_URL, SOURCE_DOMAIN)
+        video_links = set()
+        used_domain = None
+
+        for domain in SOURCE_DOMAINS:
+            print(f"\nSearching for videos starting with '{domain}' on {TARGET_URL}...")
+            status.config(text=f"Status: Searching for videos ({domain})...")
+            video_links = find_video_sources(TARGET_URL, domain)
+            if video_links:
+                used_domain = domain
+                break
+            else:
+                print(f"No videos found with domain '{domain}'.")
 
         if video_links:
-            print(f"**Found {len(video_links)} unique video sources. Starting download...**")
+            print(f"**Found {len(video_links)} unique video sources from {used_domain}. Starting download...**")
             status.config(text=f"Status: Found {len(video_links)} videos. Downloading...")
             for i, link in enumerate(video_links, 1):
                 print(f"\n[{i}/{len(video_links)}] Attempting to download: {link}")
@@ -79,7 +92,7 @@ def find_kinemaster_template_videos(url):
                 except Exception as e:
                     print(f"Failed to auto-open video: {e}")
         else:
-            print("\nNo video source URLs were found matching the criteria. Nothing to download.")
+            print("\nNo video source URLs were found matching any known domains. Nothing to download.")
             status.config(text="Status: No videos found/Invalid URL.")
 
     threading.Thread(target=worker, daemon=True).start()
@@ -88,7 +101,10 @@ def find_kinemaster_template_videos(url):
 root = tk.Tk()
 root.geometry("400x300")
 root.title("KMVD by TheSharkGuy")
-root.iconbitmap("favicon.ico")
+try:
+    root.iconbitmap("favicon.ico")
+except Exception:
+    pass
 root.resizable(False, False)
 
 title = tk.Label(root, text="KineMaster Video Downloader", font=("Segoe UI SemiBold", 16))
